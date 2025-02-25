@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Posts</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>My Blogs</h1>
+    <nav>
+      <button id="home-btn">Home</button>
+      <button id="logout-btn">Logout</button>
+    </nav>
+  </header>
+  
+  <section>
+    <h2>Create Post</h2>
+    <input type="text" id="title" placeholder="Title">
+    <textarea id="body" placeholder="Post body"></textarea>
+    <button onclick="createPost()">Create</button>
+  </section>
+
+  <section>
+    <h2>Your Posts</h2>
+    <div id="user-posts"></div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>

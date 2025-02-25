@@ -1,0 +1,149 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f4f8;
+  color: #2c3e50;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background: #3498db;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-size: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+section {
+  margin: 40px auto;
+  max-width: 800px;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 16px;
+  background-color: #f9fbfd;
+  transition: border-color 0.3s ease;
+}
+
+input:focus, textarea:focus {
+  border-color: #2980b9;
+  outline: none;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 0.9em;
+  margin-top: 10px;
+}
+
+.timestamp {
+  font-size: 0.9em;
+  color: #7f8c8d;
+  margin-left: 10px;
+}
+
+.post-block {
+  background: white;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.post-block:hover {
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.post-block h3 {
+  margin: 0 0 10px;
+  font-size: 1.5em;
+  color: #2c3e50;
+}
+
+.post-block p {
+  margin: 5px 0;
+  font-size: 1em;
+  color: #34495e;
+}
+
+.comment {
+  background: #ecf0f1;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.comment p:first-child {
+  font-size: 0.9em;
+  color: #7f8c8d;
+}
+
+.comment p:last-child {
+  margin-top: 5px;
+  font-size: 1em;
+  color: #2c3e50;
+}
+
+button {
+  background: #2980b9;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background: #2471a3;
+}
+
+#back-to-home {
+  background: #2980b9;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-bottom: 20px;
+  transition: background 0.3s ease;
+}
+
+#back-to-home:hover {
+  background: #2471a3;
+}
+
+@media (max-width: 600px) {
+  section {
+    margin: 20px auto;
+    padding: 15px;
+  }
+  input, textarea, button {
+    font-size: 14px;
+  }
+  .post-block h3 {
+    font-size: 1.3em;
+  }
+}
