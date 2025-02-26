@@ -1,201 +1,122 @@
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const path = require('path');
 const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const { authenticate, validateObjectId, register, login, checkUsername } = require('./auth');
+require('./db');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SECRET_KEY = process.env.SECRET_KEY || 'default_secret';
-const dbURL = process.env.dbURL;
+const { Blog, Comment } = require('./db');
 
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-mongoose.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('Error connecting to DB:', err));
+/* authorization */
+app.post('/auth/register', register);
+app.post('/auth/login', login);
+app.post('/auth/check-username', checkUsername);
 
-/* schemas */
-const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-});
-const User = mongoose.model('User', userSchema, 'users');
-
-const blogSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  body: { type: String, required: true },
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-}, { timestamps: true });
-const Blog = mongoose.model('Blog', blogSchema, 'blogs');
-
-const commentSchema = new mongoose.Schema({
-  postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Blog', required: true },
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  text: { type: String, required: true }
-}, { timestamps: true });
-const Comment = mongoose.model('Comment', commentSchema, 'comments');
-
-
-const validateObjectId = (paramName) => (req, res, next) => {
-  if (!mongoose.Types.ObjectId.isValid(req.params[paramName])) {
-    return res.status(400).json({ error: `Invalid ${paramName} ID` });
-  }
-  req.params[paramName] = new mongoose.Types.ObjectId(req.params[paramName]);
-  next();
-};
-
-/* authentication */
-const authenticate = (req, res, next) => {
-  const token = req.header('Authorization');
-  if (!token) return res.status(401).json({ error: 'Access denied: No token provided' });
-  try {
-    const verified = jwt.verify(token.split(' ')[1], SECRET_KEY);
-    if (!verified.userId) throw new Error('Token missing userId');
-    req.user = verified;
-    next();
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid token: ' + err.message });
-  }
-};
-
-/* Error handler */
-const errorHandler = (res, err, message) => {
-  console.error(`${message}:`, err.message);
-  res.status(500).json({ error: `${message}: ${err.message}` });
-};
-
-/* paths */
-app.post('/auth/register', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashedPassword });
-    await user.save();
-    res.status(201).json({ message: 'User registered' });
-  } catch (err) {
-    res.status(400).json({ error: 'Error registering user: ' + err.message });
-  }
-});
-
-app.post('/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const user = await User.findOne({ username });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    const token = jwt.sign({ userId: user._id }, SECRET_KEY, { expiresIn: '1h' });
-    res.json({ token, userId: user._id });
-  } catch (err) {
-    errorHandler(res, err, 'Error during login');
-  }
-});
-
-app.post('/auth/check-username', async (req, res) => {
-  const { username } = req.body;
-  try {
-    const user = await User.findOne({ username });
-    res.json({ exists: !!user });
-  } catch (err) {
-    errorHandler(res, err, 'Error checking username');
-  }
-});
-
-app.post('/posts', authenticate, async (req, res) => {
+/* posts CRUD */
+app.post('/posts', authenticate, async (req, res, next) => {
   const { title, body } = req.body;
   try {
+    if (!title || !body) throw Object.assign(new Error('Title and body are required'), { status: 400 });
     const post = new Blog({ title, body, author: req.user.userId });
     await post.save();
     res.status(201).json(post);
   } catch (err) {
-    errorHandler(res, err, 'Error creating post');
+    next(err);
   }
 });
 
-app.get('/posts', async (req, res) => {
+app.get('/posts', async (req, res, next) => {
   try {
     const posts = await Blog.find().populate('author', 'username');
     res.json(posts);
   } catch (err) {
-    errorHandler(res, err, 'Error retrieving posts');
+    next(err);
   }
 });
 
-app.get('/posts/user', authenticate, async (req, res) => {
+app.get('/posts/user', authenticate, async (req, res, next) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.user.userId)) {
-      return res.status(400).json({ error: 'Invalid userId in token' });
-    }
-    const userId = new mongoose.Types.ObjectId(req.user.userId);
-    const posts = await Blog.find({ author: userId }).populate('author', 'username');
+    const posts = await Blog.find({ author: req.user.userId }).populate('author', 'username');
     res.json(posts || []);
   } catch (err) {
-    errorHandler(res, err, 'Error retrieving user posts');
+    next(err);
   }
 });
 
-app.get('/posts/:id', validateObjectId('id'), async (req, res) => {
+app.get('/posts/:id', validateObjectId('id'), async (req, res, next) => {
   try {
     const post = await Blog.findById(req.params.id).populate('author', 'username');
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (!post) throw Object.assign(new Error('Post not found'), { status: 404 });
     res.json(post);
   } catch (err) {
-    errorHandler(res, err, 'Error retrieving post');
+    next(err);
   }
 });
 
-app.put('/posts/:id', [authenticate, validateObjectId('id')], async (req, res) => {
+app.put('/posts/:id', [authenticate, validateObjectId('id')], async (req, res, next) => {
   const { title, body } = req.body;
   try {
+    if (!title || !body) throw Object.assign(new Error('Title and body are required'), { status: 400 });
     const post = await Blog.findOneAndUpdate(
       { _id: req.params.id, author: req.user.userId },
       { title, body },
       { new: true }
     );
-    if (!post) return res.status(403).json({ error: 'Not authorized' });
+    if (!post) throw Object.assign(new Error('Not authorized or post not found'), { status: 403 });
     res.json(post);
   } catch (err) {
-    errorHandler(res, err, 'Error updating post');
+    next(err);
   }
 });
 
-app.delete('/posts/:id', [authenticate, validateObjectId('id')], async (req, res) => {
+app.delete('/posts/:id', [authenticate, validateObjectId('id')], async (req, res, next) => {
   try {
     await Comment.deleteMany({ postId: req.params.id });
     const post = await Blog.findOneAndDelete({ _id: req.params.id, author: req.user.userId });
-    if (!post) return res.status(403).json({ error: 'Not authorized' });
+    if (!post) throw Object.assign(new Error('Not authorized or post not found'), { status: 403 });
     res.json({ message: 'Post and associated comments deleted' });
   } catch (err) {
-    errorHandler(res, err, 'Error deleting post');
+    next(err);
   }
 });
 
-app.post('/posts/:id/comments', [authenticate, validateObjectId('id')], async (req, res) => {
+/* comments CRUD */
+app.post('/posts/:id/comments', [authenticate, validateObjectId('id')], async (req, res, next) => {
   const { text } = req.body;
   try {
+    if (!text) throw Object.assign(new Error('Comment text is required'), { status: 400 });
     const post = await Blog.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (!post) throw Object.assign(new Error('Post not found'), { status: 404 });
     const comment = new Comment({ postId: req.params.id, author: req.user.userId, text });
     await comment.save();
     res.status(201).json(comment);
   } catch (err) {
-    errorHandler(res, err, 'Error adding comment');
+    next(err);
   }
 });
 
-app.get('/posts/:id/comments', validateObjectId('id'), async (req, res) => {
+app.get('/posts/:id/comments', validateObjectId('id'), async (req, res, next) => {
   try {
     const comments = await Comment.find({ postId: req.params.id }).populate('author', 'username');
     res.json(comments);
   } catch (err) {
-    errorHandler(res, err, 'Error retrieving comments');
+    next(err);
   }
+});
+
+
+/* global error handler */
+app.use((err, req, res, next) => {
+  console.error('Global error:', err.message);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || 'Internal Server Error' });
 });
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
