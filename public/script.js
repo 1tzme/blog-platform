@@ -1,4 +1,4 @@
-const apiUrl = 'http://localhost:3000';
+const apiUrl = '';
 
 const checkToken = (redirect = 'auth.html') => {
   const token = localStorage.getItem('token');
